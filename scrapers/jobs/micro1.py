@@ -1,27 +1,20 @@
-import json
+import time
 from datetime import datetime, timedelta
 from curl_cffi import requests
 from scrapers.base import BaseSpider
 
 class Micro1Spider(BaseSpider):
-    
-    def scrape(self):
-        print("[*] Scraping Micro1 Public Opportunities Board...")
-        results = []
-        now = datetime.utcnow()
-        cutoff_time = now - timedelta(hours=24)
-        today_str = now.strftime("%Y-%m-%d")
-        
-        api_url = "https://prod-api.micro1.ai/api/v1/job/portal?page=1&limit=50&keyword="
-        
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json",
+    def _fetch_jobs_list(self):
+        """
+        Try multiple request shapes/endpoints to survive Micro1 anti-bot 403 responses.
+        Returns a list of job dicts or an empty list.
+        """
+        base_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
             "Accept-Language": "en-US,en;q=0.9",
             "Content-Type": "application/json",
-            "Origin": "https://www.micro1.ai",
-            "Referer": "https://www.micro1.ai/",
-            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="128", "Google Chrome";v="128"',
             "Sec-Ch-Ua-Mobile": "?0",
             "Sec-Ch-Ua-Platform": '"Windows"',
             "Sec-Fetch-Dest": "empty",
@@ -29,21 +22,88 @@ class Micro1Spider(BaseSpider):
             "Sec-Fetch-Site": "same-site"
         }
 
-        payload = {
-            "action": "get_all_jobs"
-        }
+        attempts = [
+            {
+                "method": "post",
+                "url": "https://prod-api.micro1.ai/api/v1/job/portal?page=1&limit=50&keyword=",
+                "origin": "https://www.micro1.ai",
+                "referer": "https://www.micro1.ai/",
+                "payload": {"action": "get_all_jobs"},
+            },
+            {
+                "method": "post",
+                "url": "https://prod-api.micro1.ai/api/v1/job/portal?page=1&limit=50&keyword=",
+                "origin": "https://jobs.micro1.ai",
+                "referer": "https://jobs.micro1.ai/",
+                "payload": {"action": "get_all_jobs"},
+            },
+            {
+                "method": "get",
+                "url": "https://prod-api.micro1.ai/api/v1/job/portal?page=1&limit=50&keyword=",
+                "origin": "https://www.micro1.ai",
+                "referer": "https://www.micro1.ai/",
+                "payload": None,
+            },
+            {
+                "method": "get",
+                "url": "https://jobs.micro1.ai/api/v1/job/portal?page=1&limit=50&keyword=",
+                "origin": "https://jobs.micro1.ai",
+                "referer": "https://jobs.micro1.ai/",
+                "payload": None,
+            },
+        ]
 
-        try:
-            resp = requests.post(api_url, headers=headers, json=payload, impersonate="chrome120", timeout=15)
+        for idx, attempt in enumerate(attempts, start=1):
+            headers = {**base_headers, "Origin": attempt["origin"], "Referer": attempt["referer"]}
+            try:
+                if attempt["method"] == "post":
+                    resp = requests.post(
+                        attempt["url"],
+                        headers=headers,
+                        json=attempt["payload"],
+                        impersonate="chrome120",
+                        timeout=20
+                    )
+                else:
+                    resp = requests.get(
+                        attempt["url"],
+                        headers=headers,
+                        impersonate="chrome120",
+                        timeout=20
+                    )
 
-            
-            if resp.status_code == 200:
+                if resp.status_code == 403:
+                    print(f"[!] Micro1 attempt {idx} blocked with 403; trying fallback...")
+                    time.sleep(1)
+                    continue
+
+                if resp.status_code != 200:
+                    print(f"[!] Micro1 attempt {idx} failed with status {resp.status_code}")
+                    continue
+
                 data = resp.json()
                 jobs_list = data.get("data", [])
-                
                 if isinstance(jobs_list, dict):
                     jobs_list = jobs_list.get("jobs", jobs_list.get("data", []))
-                
+
+                if isinstance(jobs_list, list):
+                    return jobs_list
+
+            except Exception as e:
+                print(f"[!] Micro1 attempt {idx} request error: {e}")
+
+        return []
+    
+    def scrape(self):
+        print("[*] Scraping Micro1 Public Opportunities Board...")
+        results = []
+        now = datetime.utcnow()
+        cutoff_time = now - timedelta(hours=24)
+        today_str = now.strftime("%Y-%m-%d")
+
+        try:
+            jobs_list = self._fetch_jobs_list()
+            if jobs_list:
                 print(f"[+] Retrieved {len(jobs_list)} total jobs. Filtering for last 24 hours...")
                 
                 for item in jobs_list:
@@ -93,7 +153,7 @@ class Micro1Spider(BaseSpider):
                 print(f"[+] Found {len(results)} jobs posted within the last 24 hours.")
                 return results
             else:
-                print(f"[!] Endpoint Error. Status: {resp.status_code}")
+                print("[!] Endpoint Error. Micro1 returned no usable payload after fallback attempts.")
                 
         except Exception as e:
             print(f"[-] Scrape failed: {e}")
