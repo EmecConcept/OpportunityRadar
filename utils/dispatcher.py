@@ -4,8 +4,8 @@ import requests
 try:
     from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 except ImportError:
-    TELEGRAM_BOT_TOKEN = "8609809459:AAH9g3mLOdy9ReflZ9IR-QX5jMd_PbeYm7Q"
-    TELEGRAM_CHAT_ID = "7030632357"
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def _dispatch_chunk(chunk: str, bot_token: str, chat_id: str) -> bool:
     """Helper to transmit a single message block with Markdown parse-safety."""
