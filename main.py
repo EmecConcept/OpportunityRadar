@@ -6,6 +6,7 @@ from scrapers.scholarships.erasmus import get_spider as get_erasmus
 from scrapers.scholarships.commonwealth import get_spider as get_commonwealth
 from scrapers.scholarships.ptdf import get_spider as get_ptdf
 from scrapers.jobs.micro1 import get_spider as get_micro1
+from scrapers.jobs.mercor import get_spider as get_mercor
 from scrapers.jobs.jobicy import get_spider as get_jobicy
 from utils.formatter import format_telegram_message, format_job_bundle
 from utils.dispatcher import send_telegram_message
@@ -37,7 +38,8 @@ def main():
         get_commonwealth(),
         get_micro1(),
         get_jobicy(),
-        get_ptdf()
+        get_ptdf(),
+        get_mercor()
     ]
     
     new_opportunities = []
