@@ -55,7 +55,7 @@ def format_job_bundle(jobs: list) -> str:
             lines.append(f"{link}\n")
             
     lines.append("━━━━━━━━━━━━━━━━━━━")
-    lines.append("📢 *Join CampusZone Telegram Channel:*")
-    lines.append("https://t.me/YOUR_CHANNEL_USERNAME")
+    lines.append("📢 *Invite your friends to Campus zone WhatsApp Channel:*")
+    lines.append("https://whatsapp.com/channel/0029Vb86O2MEVccG2Lno8P2T")
     
     return "\n".join(lines)
