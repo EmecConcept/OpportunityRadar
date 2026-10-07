@@ -30,7 +30,7 @@ def format_telegram_message(opp: dict) -> str:
         f"📋 *Requirements:* {requirements}\n\n"
         f"🔗 *Apply Here:* {link}\n\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
-        f"📢 *Join CampusZone Telegram Channel for daily alerts!*"
+        f"📢 *Invite your friends to join Campus zone WhatsApp Channel today*\n https://whatsapp.com/channel/0029Vb86O2MEVccG2Lno8P2T"
     )
 
 def format_job_bundle(jobs: list) -> str:
